@@ -1,0 +1,82 @@
+# Best practice: Remove the 'version' field for modern Docker Compose CLI
+# If you must keep it for compatibility, use 'version: "3"'
+# version: '3.8' 
+
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      # Depend on the specific instances that the gateway will connect to
+      - product-service-1
+      - product-service-2
+      - user-service-1
+      - user-service-2
+      - checkout-service
+      - redis # Add dependency for Redis since gateway likely uses it
+    networks:
+      - app-network
+
+  # --- Product Service Instances ---
+  product-service-1:
+    build: ./product-service
+    # Only map the specific port this instance listens on
+    ports:
+      - "3001:3001" 
+    environment:
+      - PORT=3001 # Explicitly set port for this instance
+    networks:
+      - app-network
+
+  product-service-2:
+    build: ./product-service
+    # Only map the specific port this instance listens on
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003 # Explicitly set port for this instance
+    networks:
+      - app-network
+
+  # --- User Service Instances ---
+  user-service-1:
+    build: ./user-service
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+    depends_on:
+      - redis # User service depends on Redis
+    networks:
+      - app-network
+
+  user-service-2:
+    build: ./user-service
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+    depends_on:
+      - redis # User service depends on Redis
+    networks:
+      - app-network
+
+  # --- Checkout Service ---
+  checkout-service:
+    build: ./checkout-service
+    ports:
+      - "3005:3005"
+    networks:
+      - app-network
+
+  # --- Redis Service ---
+  redis:
+    image: "redis:alpine"
+    networks:
+      - app-network # Redis must also be on the shared network
+
+# Define the shared network for all services
+networks:
+  app-network:
+    driver: bridge
